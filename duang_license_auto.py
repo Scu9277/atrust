@@ -10,7 +10,7 @@
       python3 duang_license_auto.py
 
    2. 从云端下载授权文件后执行:
-      python3 duang_license_auto.py --url https://raw.githubusercontent.com/xxx/duang-license/main/license.tar.gz
+      python3 duang_license_auto.py --url https://ghfast.top/github.com/Scu9277/atrust/raw/refs/heads/main/duang-license-package.tar.gz
 
    3. 仅收集本机信息:
       python3 duang_license_auto.py --collect-only
