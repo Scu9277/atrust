@@ -23,7 +23,7 @@ err()  { echo -e "${RED}[-]${NC} $1"; }
 # ============================================================
 # 配置区 — 改成你自己的 GitHub 仓库地址
 # ============================================================
-LICENSE_URL="https://github.com/Scu9277/atrust/raw/refs/heads/main/duang-license-package.tar.gz"
+LICENSE_URL="https://github.com/Scu9277/atrust/raw/refs/heads/main/duang-license-pack.tar.gz"
 # ============================================================
 
 # 本地授权包路径
