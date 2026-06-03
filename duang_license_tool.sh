@@ -73,7 +73,7 @@ restore_from_pack() {
     # 同步 daemon 配置
     if [ -f "${dd}/config.prod.json" ]; then
         cp "${dd}/config.prod.json" "$DAEMON_CONFIG" 2>/dev/null || true
-        local cid; cid=$(get_cid)
+        cid=$(get_cid)
         [ -n "$cid" ] && docker cp "$DAEMON_CONFIG" "${cid}:/home/app/sdp-license-confd/config/config.prod.json" 2>/dev/null || true
     fi
 
@@ -265,9 +265,9 @@ case "${1:-}" in
         fi
 
         # 1. 确保 daemon 在运行（.lic 存在时它会做一次初始同步）
-        local cid; cid=$(get_cid)
+        cid=$(get_cid)
         if [ -n "$cid" ]; then
-            local cur
+            cur
             cur=$(docker exec "$cid" supervisorctl status license-confd 2>/dev/null | awk '{print $2}')
             if [ "$cur" != "RUNNING" ]; then
                 log "启动 daemon..."
