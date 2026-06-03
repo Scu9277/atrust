@@ -264,18 +264,24 @@ case "${1:-}" in
             log "本地授权包已存在"
         fi
 
-        # 1. 确保 daemon 在运行（.lic 存在时它会做一次初始同步）
+        # 1. 确保 daemon 运行（需要有效的 .lic 才能正常启动并提供 API）
         cid=$(get_cid)
         if [ -n "$cid" ]; then
             cur=$(docker exec "$cid" supervisorctl status license-confd 2>/dev/null | awk '{print $2}')
             if [ "$cur" != "RUNNING" ]; then
                 log "启动 daemon..."
                 docker exec "$cid" supervisorctl start license-confd 2>/dev/null || true
-                sleep 3
             fi
+            # 等待 daemon 完成初始化
+            for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+                cur=$(docker exec "$cid" supervisorctl status license-confd 2>/dev/null | awk '{print $2}')
+                [ "$cur" = "RUNNING" ] && sleep 2 && break
+                sleep 1
+            done
+            log "daemon 已就绪"
         fi
 
-        # 2. 改检查间隔为 31 年（之后 daemon 不再覆写 etcd）
+        # 2. 改检查间隔为 31 年（确保 daemon 不再覆写 etcd）
         fix_daemon
 
         # 3. 写入正确授权数据
@@ -284,7 +290,6 @@ case "${1:-}" in
         verify_license
         log "授权应用成功！请刷新 web 管理页面"
 
-        # 清理
         rm -f "$LOCAL_PACK"
         log "脚本自删除..."
         rm -f "$0"
