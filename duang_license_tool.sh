@@ -267,7 +267,6 @@ case "${1:-}" in
         # 1. 确保 daemon 在运行（.lic 存在时它会做一次初始同步）
         cid=$(get_cid)
         if [ -n "$cid" ]; then
-            cur
             cur=$(docker exec "$cid" supervisorctl status license-confd 2>/dev/null | awk '{print $2}')
             if [ "$cur" != "RUNNING" ]; then
                 log "启动 daemon..."
