@@ -105,18 +105,11 @@ do_restore() {
 
     do_backup
 
-    # 1. 确保 daemon 运行并完成初始加载
+    # 1. 停 daemon（防止它从 .lic 覆写 etcd）
     local cid; cid=$(get_container_id)
     if [ -n "$cid" ]; then
-        local cur
-        cur=$(docker exec "$cid" supervisorctl status license-confd 2>/dev/null | awk '{print $2}')
-        [ "$cur" != "RUNNING" ] && docker exec "$cid" supervisorctl start license-confd 2>/dev/null || true
-        log "等待 daemon 就绪..."
-        for i in $(seq 1 15); do
-            cur=$(docker exec "$cid" supervisorctl status license-confd 2>/dev/null | awk '{print $2}')
-            [ "$cur" = "RUNNING" ] && sleep 3 && break
-            sleep 1
-        done
+        docker exec "$cid" supervisorctl stop license-confd 2>/dev/null || true
+        log "daemon 已暂停"
     fi
 
     # 2. 改 daemon 检查间隔（防覆写）
@@ -209,9 +202,9 @@ do_pack() {
 
     do_backup 2>/dev/null || true
 
-    # .lic 文件（原样，不修改）
-    [ -f "${BACKUP_DIR}/license/sf_license.lic" ] && cp "${BACKUP_DIR}/license/sf_license.lic" "$pd/license/" || \
-    [ -f "${LICENSE_DIR}/sf_license.lic" ] && cp "${LICENSE_DIR}/sf_license.lic" "$pd/license/"
+    # .lic 文件（优先从系统实时目录取）
+    [ -f "${LICENSE_DIR}/sf_license.lic" ] && cp "${LICENSE_DIR}/sf_license.lic" "$pd/license/" || \
+    [ -f "${BACKUP_DIR}/license/sf_license.lic" ] && cp "${BACKUP_DIR}/license/sf_license.lic" "$pd/license/"
 
     echo '{"sn": ""}' > "$pd/license/sf_license_conf.json"
     echo "aTrust_HYBRID" > "$pd/license/product_name"
@@ -348,21 +341,37 @@ case "${1:-}" in
     --apply)
         if ! check_etcd; then err "etcd 不可用"; exit 1; fi
         collect_info
-        # 检查授权包是否存在，不存在则下载
+
+        # 先停 daemon，防止它从 .lic 覆写 etcd
+        local cid; cid=$(get_container_id)
+        if [ -n "$cid" ]; then
+            log "暂停 sdp-license-confd daemon..."
+            docker exec "$cid" supervisorctl stop license-confd 2>/dev/null || true
+            sleep 1
+        fi
+
+        do_backup
+
+        # 下载授权包
         if [ ! -f "$LOCAL_PACK" ]; then
             download_pack || exit 1
         else
             log "本地授权包已存在: $LOCAL_PACK"
         fi
+
         do_restore "$LOCAL_PACK" || exit 1
+
+        # 不重启 daemon（防止它从 .lic 覆写 etcd）
+        # web UI 直接从 etcd 读取授权数据，无需 daemon 运行
         verify_license
         log "授权应用成功！请刷新 web 管理页面"
-        # 清理：删除授权包和脚本自身
+        # 清理
         log "清理临时文件..."
         rm -f "$LOCAL_PACK"
         log "脚本自删除..."
         rm -f "$0"
         ;;
+
     --collect)
         collect_info
         ;;
